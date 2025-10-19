@@ -1,0 +1,230 @@
+---
+title: Valid Palindrome
+description: Check if a string is a palindrome using two pointers
+difficulty: Easy
+tags: [string, two-pointers]
+patterns: [two-pointers, string-manipulation]
+timeComplexity: O(n)
+spaceComplexity: O(1)
+---
+
+import { DifficultyBadge } from '@/components/mdx/DifficultyBadge';
+import { TagList } from '@/components/mdx/TagList';
+import { ComplexityTable } from '@/components/mdx/ComplexityTable';
+import { ValidPalindromeVisualizer } from '@/components/visualizer/wrappers/ValidPalindromeVisualizer';
+
+<div className="flex items-center gap-3 mb-6 flex-wrap">
+  <DifficultyBadge difficulty="Easy" />
+  <TagList tags={['string', 'two-pointers']} />
+</div>
+
+## Problem
+
+A phrase is a **palindrome** if, after converting all uppercase letters into lowercase letters and removing all non-alphanumeric characters, it reads the same forward and backward. Alphanumeric characters include letters and numbers.
+
+Given a string `s`, return `true` if it is a palindrome, or `false` otherwise.
+
+**Constraints:**
+
+- `1 <= s.length <= 2 * 10^5`
+- `s` consists only of printable ASCII characters
+
+**Examples:**
+
+```
+Input: s = "A man, a plan, a canal: Panama"
+Output: true
+Explanation: "amanaplanacanalpanama" is a palindrome
+```
+
+```
+Input: s = "race a car"
+Output: false
+Explanation: "raceacar" is not a palindrome
+```
+
+```
+Input: s = " "
+Output: true
+Explanation: After removing non-alphanumeric chars, s becomes empty "", which is a palindrome
+```
+
+## Visualization
+
+<ValidPalindromeVisualizer data="racecar" />
+
+## Solutions
+
+### Approach 1: Reverse and Compare
+
+Clean the string (remove non-alphanumeric, convert to lowercase), then create a reversed version and compare them.
+
+<ComplexityTable time="O(n)" space="O(n)" />
+
+```typescript
+function isPalindrome(s: string): boolean {
+  // Clean: remove non-alphanumeric and lowercase
+  const cleaned = s.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  // Reverse and compare
+  const reversed = cleaned.split('').reverse().join('');
+
+  return cleaned === reversed;
+}
+```
+
+**Pros:**
+
+- Simple and intuitive approach
+- Easy to understand and implement
+- One-liner solution possible
+
+**Cons:**
+
+- Uses O(n) extra space for reversed string
+- Creates multiple intermediate strings (cleaned, reversed)
+- Not optimal for memory-constrained environments
+
+---
+
+### Approach 2: Two Pointers with Array
+
+Convert cleaned string to array, then use two pointers from opposite ends to compare characters.
+
+<ComplexityTable time="O(n)" space="O(n)" />
+
+```typescript
+function isPalindrome(s: string): boolean {
+  // Clean the string
+  const cleaned = s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const chars = cleaned.split('');
+
+  let left = 0;
+  let right = chars.length - 1;
+
+  while (left < right) {
+    if (chars[left] !== chars[right]) {
+      return false;
+    }
+    left++;
+    right--;
+  }
+
+  return true;
+}
+```
+
+**Key Improvements:**
+
+- Can exit early if mismatch found
+- More intuitive two-pointer logic
+- Still uses O(n) space for character array
+
+---
+
+### Approach 3: Two Pointers In-Place ⭐ (Optimal)
+
+Skip non-alphanumeric characters on the fly and compare valid characters directly using two pointers, without creating any intermediate strings.
+
+<ComplexityTable time="O(n)" space="O(1)" />
+
+```typescript
+function isPalindrome(s: string): boolean {
+  let left = 0;
+  let right = s.length - 1;
+
+  while (left < right) {
+    // Skip non-alphanumeric from left
+    while (left < right && !isAlphanumeric(s[left])) {
+      left++;
+    }
+
+    // Skip non-alphanumeric from right
+    while (left < right && !isAlphanumeric(s[right])) {
+      right--;
+    }
+
+    // Compare characters (case-insensitive)
+    if (s[left].toLowerCase() !== s[right].toLowerCase()) {
+      return false;
+    }
+
+    left++;
+    right--;
+  }
+
+  return true;
+}
+
+function isAlphanumeric(char: string): boolean {
+  const code = char.charCodeAt(0);
+  return (
+    (code >= 48 && code <= 57) ||  // 0-9
+    (code >= 65 && code <= 90) ||  // A-Z
+    (code >= 97 && code <= 122)    // a-z
+  );
+}
+```
+
+**Why This Works:**
+
+1. **O(1) Space**: No additional data structures, only pointers
+2. **In-Place Processing**: Skip invalid characters without creating cleaned string
+3. **Early Exit**: Returns false immediately when mismatch found
+4. **Efficient Character Checking**: Custom `isAlphanumeric` faster than regex
+
+---
+
+## Tricks & Key Insights
+
+### Pattern Recognition
+
+- **When to use this pattern:** String comparison problems requiring validation from both ends
+- **Key indicator:** Need to verify symmetry or matching properties in linear data
+
+### Core Tricks
+
+1. **Two Pointers from Opposite Ends**: Classic palindrome technique
+
+   - Left pointer starts at beginning, right at end
+   - Move towards center, comparing characters
+   - Stop when pointers meet or cross
+
+2. **Skip Invalid Characters On-the-Fly**: Avoid preprocessing overhead
+
+   - Instead of cleaning string first (O(n) space)
+   - Skip non-alphanumeric during comparison (O(1) space)
+   - Use helper function to check valid characters
+
+3. **Case-Insensitive Comparison**: Use `.toLowerCase()` or character code ranges
+
+   - Compare `char.toLowerCase()` for simplicity
+   - Or check ASCII codes: `a-z` (97-122), `A-Z` (65-90), `0-9` (48-57)
+   - Lowercase conversion is O(1) per character
+
+4. **Early Termination**: Return false immediately on mismatch
+   - Don't need to check all characters if one pair doesn't match
+   - Saves time on invalid palindromes
+   - Best case O(1) for strings like "ab"
+
+### Common Pitfalls
+
+- ⚠️ **Forgetting case-insensitivity**: "Aa" should be valid palindrome
+- ⚠️ **Not handling special characters**: Spaces, punctuation must be ignored
+- ⚠️ **Off-by-one errors**: Check `left < right`, not `left <= right`
+- ⚠️ **Empty string edge case**: Empty string after cleaning is valid palindrome
+
+### Edge Cases to Consider
+
+- Empty string: `""` → `true`
+- Single character: `"a"` → `true`
+- Only special characters: `".,;"` → `true` (empty after cleaning)
+- Mixed case: `"RaceCar"` → `false` (actually `true` after proper cleaning)
+- Numbers and letters: `"A1b2B1a"` → `true`
+
+## Related Problems
+
+- [Valid Palindrome II](https://leetcode.com/problems/valid-palindrome-ii/) - Can delete at most one character
+- [Palindrome Linked List](https://leetcode.com/problems/palindrome-linked-list/) - Similar two-pointer concept for linked lists
+- [Longest Palindromic Substring](https://leetcode.com/problems/longest-palindromic-substring/) - Find longest palindromic substring
+- [Palindrome Number](https://leetcode.com/problems/palindrome-number/) - Check if number is palindrome without string conversion

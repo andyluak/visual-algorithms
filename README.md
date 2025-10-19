@@ -28,7 +28,7 @@ An interactive learning platform for algorithms and data structures with beautif
 
 #### Two Pointers & Sliding Window
 
-- [ ] Valid Palindrome ⭐⭐⭐
+- [x] Valid Palindrome ⭐⭐⭐
 - [ ] Best Time to Buy and Sell Stock ⭐⭐⭐
 - [ ] Longest Substring Without Repeating Characters ⭐⭐⭐
 - [ ] 3Sum ⭐⭐⭐
