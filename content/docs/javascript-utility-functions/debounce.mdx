@@ -1,0 +1,390 @@
+---
+title: Debounce
+description: Delay function execution until after a period of inactivity
+difficulty: Medium
+tags: [javascript, utilities, performance, events]
+patterns: [debounce, closure, timing]
+timeComplexity: O(1)
+spaceComplexity: O(1)
+---
+
+import { DifficultyBadge } from '@/components/mdx/DifficultyBadge';
+import { TagList } from '@/components/mdx/TagList';
+import { ComplexityTable } from '@/components/mdx/ComplexityTable';
+import { DebounceVisualizer } from '@/components/visualizer/wrappers/DebounceVisualizer';
+
+<div className="flex items-center gap-3 mb-6 flex-wrap">
+  <DifficultyBadge difficulty="Medium" />
+  <TagList tags={['javascript', 'utilities', 'performance', 'events']} />
+</div>
+
+## Problem
+
+Create a debounce function that delays invoking a callback until after a specified time has elapsed since the last time it was called. This is crucial for optimizing performance when handling rapid, repeated events like scrolling, resizing, or typing.
+
+**Use Cases:**
+- Search input: Wait until user stops typing before making API call
+- Window resize: Wait until user finishes resizing before recalculating layout
+- Button clicks: Prevent accidental double-clicks
+- Form validation: Validate after user pauses typing
+
+**Constraints:**
+- Must preserve function context (`this`)
+- Should handle function arguments correctly
+- Timer should reset on each new call
+- Should be memory-efficient
+
+**Examples:**
+
+```javascript
+// Search input example
+const searchAPI = (query) => fetch(`/api/search?q=${query}`);
+const debouncedSearch = debounce(searchAPI, 300);
+
+// User types "hello" quickly
+debouncedSearch('h');    // timer starts
+debouncedSearch('he');   // timer resets
+debouncedSearch('hel');  // timer resets
+debouncedSearch('hell'); // timer resets
+debouncedSearch('hello'); // timer resets
+// ... 300ms passes with no calls
+// NOW searchAPI('hello') executes
+```
+
+## Visualization
+
+<DebounceVisualizer delay={300} />
+
+## Solutions
+
+### Approach 1: Naive Timeout (Broken)
+
+A common first attempt that doesn't actually debounce - it creates a new timer for each call without canceling the previous one.
+
+<ComplexityTable time="O(1)" space="O(n)" />
+
+```typescript
+// ❌ This doesn't work correctly!
+function badDebounce(func: Function, delay: number) {
+  return function(...args: unknown[]) {
+    setTimeout(() => {
+      func(...args);
+    }, delay);
+  };
+}
+
+// Problem: All calls still execute, just delayed
+const bad = badDebounce(console.log, 1000);
+bad('a'); // executes after 1000ms
+bad('b'); // executes after 1000ms
+bad('c'); // executes after 1000ms
+// All three calls execute instead of just the last one!
+```
+
+**Pros:**
+- Simple to understand
+- Creates delayed execution
+
+**Cons:**
+- Doesn't actually debounce - all calls still execute
+- Wastes memory with multiple active timers
+- Doesn't solve the original problem
+
+---
+
+### Approach 2: Basic Debounce ⭐
+
+Clear the previous timer before setting a new one. Only the last call in a rapid sequence will execute.
+
+<ComplexityTable time="O(1)" space="O(1)" />
+
+```typescript
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  delay: number
+): (...args: Parameters<T>) => void {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  return function(this: unknown, ...args: Parameters<T>) {
+    // Clear previous timer
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+    }
+
+    // Set new timer
+    timeoutId = setTimeout(() => {
+      func.apply(this, args);
+    }, delay);
+  };
+}
+```
+
+**Key Improvements:**
+- Uses closure to maintain `timeoutId` reference
+- Clears previous timeout before setting new one
+- Preserves `this` context with `apply`
+- Type-safe with TypeScript generics
+
+---
+
+### Approach 3: Advanced Debounce with Options ⭐⭐ (Production-Ready)
+
+Add leading edge execution, cancellation, and immediate flush capabilities.
+
+<ComplexityTable time="O(1)" space="O(1)" />
+
+```typescript
+interface DebounceOptions {
+  leading?: boolean;  // Execute immediately on first call
+  trailing?: boolean; // Execute after delay (default behavior)
+  maxWait?: number;   // Maximum time to wait before forced execution
+}
+
+interface DebouncedFunction<T extends (...args: any[]) => any> {
+  (...args: Parameters<T>): void;
+  cancel(): void;
+  flush(): void;
+  pending(): boolean;
+}
+
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  delay: number,
+  options: DebounceOptions = {}
+): DebouncedFunction<T> {
+  const { leading = false, trailing = true, maxWait } = options;
+
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  let maxTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  let lastCallTime = 0;
+  let lastInvokeTime = 0;
+  let lastArgs: Parameters<T> | null = null;
+  let lastThis: unknown = null;
+
+  function invokeFunc(time: number) {
+    const args = lastArgs!;
+    const thisArg = lastThis;
+
+    lastArgs = lastThis = null;
+    lastInvokeTime = time;
+    return func.apply(thisArg, args);
+  }
+
+  function startTimer(pendingFunc: () => void, wait: number) {
+    return setTimeout(pendingFunc, wait);
+  }
+
+  function cancelTimer(id: ReturnType<typeof setTimeout> | null) {
+    if (id !== null) {
+      clearTimeout(id);
+    }
+  }
+
+  function leadingEdge(time: number) {
+    lastInvokeTime = time;
+    timeoutId = startTimer(timerExpired, delay);
+    return leading ? invokeFunc(time) : undefined;
+  }
+
+  function remainingWait(time: number) {
+    const timeSinceLastCall = time - lastCallTime;
+    const timeSinceLastInvoke = time - lastInvokeTime;
+    const timeWaiting = delay - timeSinceLastCall;
+
+    return maxWait !== undefined
+      ? Math.min(timeWaiting, maxWait - timeSinceLastInvoke)
+      : timeWaiting;
+  }
+
+  function shouldInvoke(time: number) {
+    const timeSinceLastCall = time - lastCallTime;
+    const timeSinceLastInvoke = time - lastInvokeTime;
+
+    return (
+      lastCallTime === 0 ||
+      timeSinceLastCall >= delay ||
+      timeSinceLastCall < 0 ||
+      (maxWait !== undefined && timeSinceLastInvoke >= maxWait)
+    );
+  }
+
+  function timerExpired() {
+    const time = Date.now();
+    if (shouldInvoke(time)) {
+      return trailingEdge(time);
+    }
+    timeoutId = startTimer(timerExpired, remainingWait(time));
+  }
+
+  function trailingEdge(time: number) {
+    timeoutId = null;
+
+    if (trailing && lastArgs) {
+      return invokeFunc(time);
+    }
+    lastArgs = lastThis = null;
+    return undefined;
+  }
+
+  function cancel() {
+    cancelTimer(timeoutId);
+    cancelTimer(maxTimeoutId);
+    lastInvokeTime = 0;
+    lastCallTime = 0;
+    lastArgs = lastThis = timeoutId = maxTimeoutId = null;
+  }
+
+  function flush() {
+    return timeoutId === null ? undefined : trailingEdge(Date.now());
+  }
+
+  function pending() {
+    return timeoutId !== null;
+  }
+
+  function debounced(this: unknown, ...args: Parameters<T>) {
+    const time = Date.now();
+    const isInvoking = shouldInvoke(time);
+
+    lastArgs = args;
+    lastThis = this;
+    lastCallTime = time;
+
+    if (isInvoking) {
+      if (timeoutId === null) {
+        return leadingEdge(lastCallTime);
+      }
+      if (maxWait !== undefined) {
+        // Handle maxWait
+        timeoutId = startTimer(timerExpired, delay);
+        return invokeFunc(lastCallTime);
+      }
+    }
+    if (timeoutId === null) {
+      timeoutId = startTimer(timerExpired, delay);
+    }
+    return undefined;
+  }
+
+  debounced.cancel = cancel;
+  debounced.flush = flush;
+  debounced.pending = pending;
+
+  return debounced;
+}
+```
+
+**Why This Works:**
+1. **Leading Edge**: Execute immediately on first call, then wait
+2. **Trailing Edge**: Execute after delay period (standard debounce)
+3. **Max Wait**: Guarantee execution if too much time passes
+4. **Cancel/Flush**: Manual control over pending executions
+5. **Pending Check**: Query if execution is waiting
+
+**Usage Examples:**
+
+```typescript
+// Leading edge: Execute immediately, then debounce
+const saveLeading = debounce(saveData, 1000, { leading: true });
+
+// Max wait: Force execution every 5 seconds max
+const scroll = debounce(handleScroll, 300, { maxWait: 5000 });
+
+// Cancel pending execution
+const search = debounce(searchAPI, 500);
+search('query');
+search.cancel(); // Cancels pending search
+
+// Force immediate execution
+search('query');
+search.flush(); // Executes immediately instead of waiting
+```
+
+## Tricks & Key Insights
+
+### Pattern Recognition
+- **When to use debounce:** User-triggered events that fire rapidly (typing, scrolling, resizing)
+- **Key indicator:** You want only the final value after user stops interacting
+- **vs Throttle:** Throttle executes at regular intervals; debounce waits for inactivity
+
+### Core Tricks
+
+1. **Closure for Timer Reference**: Store `timeoutId` in closure scope
+   - Each debounced function maintains its own timer
+   - Timer persists across multiple calls
+   - No global state pollution
+
+2. **clearTimeout Pattern**: Always clear before setting new timer
+   ```typescript
+   if (timeoutId) clearTimeout(timeoutId);
+   timeoutId = setTimeout(/* ... */);
+   ```
+   - Prevents timer accumulation
+   - Ensures only last call executes
+
+3. **Context Preservation**: Use `apply` or arrow functions
+   ```typescript
+   // Method 1: apply
+   func.apply(this, args);
+
+   // Method 2: arrow function (captures outer this)
+   setTimeout(() => func(...args), delay);
+   ```
+
+4. **Leading vs Trailing Edge**:
+   - **Trailing** (default): Execute after user stops (search, validation)
+   - **Leading**: Execute immediately, then block (submit button)
+   - **Both**: Execute on start AND end (analytics tracking)
+
+### Common Pitfalls
+
+- ⚠️ **Forgetting to clear timeout**: Results in multiple executions
+- ⚠️ **Losing `this` context**: Use `apply` or arrow functions carefully
+- ⚠️ **Wrong delay value**: Too short = doesn't help, too long = feels unresponsive
+- ⚠️ **Debouncing everything**: Some events (click handlers) shouldn't be debounced
+- ⚠️ **Memory leaks**: Remember to cancel/cleanup on component unmount (React)
+
+### Edge Cases to Consider
+
+- Component unmount while timer is pending (need cleanup)
+- User navigates away during delay period
+- Function throws error - should timer be reset?
+- Debouncing async functions - return value handling
+- Multiple instances with same delay - need separate timers
+
+### Real-World Guidelines
+
+**Delay Recommendations:**
+- Search input: 300-500ms
+- Window resize: 150-250ms
+- Scroll events: 50-100ms (or use throttle)
+- Form validation: 500-1000ms
+- Autosave: 1000-2000ms
+
+**React Usage:**
+```typescript
+import { useCallback, useEffect } from 'react';
+
+function SearchComponent() {
+  const debouncedSearch = useCallback(
+    debounce((query: string) => {
+      // API call
+    }, 300),
+    [] // Create once
+  );
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => debouncedSearch.cancel();
+  }, [debouncedSearch]);
+
+  return <input onChange={(e) => debouncedSearch(e.target.value)} />;
+}
+```
+
+## Related Problems
+
+- [Throttle](/docs/javascript-utility-functions/throttle) - Execute at regular intervals instead of waiting for inactivity
+- [Memoization](/docs/javascript-utility-functions/memoization) - Similar closure pattern for caching results
+- [Event Delegation](/docs/event-system-dom/event-delegation) - Often combined with debounce for performance
+- [Promise Pool](/docs/asynchronous-javascript/promise-pool) - Rate limiting for async operations
