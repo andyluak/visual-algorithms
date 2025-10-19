@@ -1,0 +1,236 @@
+---
+title: Two Sum
+description: Find two numbers that add up to a target
+difficulty: Easy
+tags: [array, hash-map, two-pointers]
+patterns: [hash-map, complement-search]
+timeComplexity: O(n)
+spaceComplexity: O(n)
+---
+
+import { DifficultyBadge } from '@/components/mdx/DifficultyBadge';
+import { TagList } from '@/components/mdx/TagList';
+import { ComplexityTable } from '@/components/mdx/ComplexityTable';
+import { TwoSumVisualizer } from '@/components/visualizer/wrappers/TwoSumVisualizer';
+
+<div className="flex items-center gap-3 mb-6 flex-wrap">
+  <DifficultyBadge difficulty="Easy" />
+  <TagList tags={['array', 'hash-map', 'two-pointers']} />
+</div>
+
+## Problem
+
+Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to `target`.
+
+You may assume that each input would have exactly one solution, and you may not use the same element twice.
+
+**Constraints:**
+- `2 <= nums.length <= 10^4`
+- `-10^9 <= nums[i] <= 10^9`
+- `-10^9 <= target <= 10^9`
+- Only one valid answer exists
+
+**Examples:**
+
+```
+Input: nums = [2, 7, 11, 15], target = 9
+Output: [0, 1]
+Explanation: nums[0] + nums[1] = 2 + 7 = 9
+```
+
+```
+Input: nums = [3, 2, 4], target = 6
+Output: [1, 2]
+Explanation: nums[1] + nums[2] = 2 + 4 = 6
+```
+
+```
+Input: nums = [3, 3], target = 6
+Output: [0, 1]
+Explanation: nums[0] + nums[1] = 3 + 3 = 6
+```
+
+## Visualization
+
+<TwoSumVisualizer data={[2, 7, 11, 15]} target={9} />
+
+## Solutions
+
+### Approach 1: Brute Force
+
+Check every possible pair of numbers by using nested loops. For each element, iterate through the rest of the array to find if any element sums to the target.
+
+<ComplexityTable time="O(n²)" space="O(1)" />
+
+```typescript
+function twoSum(nums: number[], target: number): number[] {
+  // Try every possible pair
+  for (let i = 0; i < nums.length; i++) {
+    for (let j = i + 1; j < nums.length; j++) {
+      if (nums[i] + nums[j] === target) {
+        return [i, j];
+      }
+    }
+  }
+  return [];
+}
+```
+
+**Pros:**
+- Simple and intuitive
+- No extra space required
+- Easy to understand and implement
+
+**Cons:**
+- Very slow for large arrays (quadratic time)
+- Checks many unnecessary pairs
+
+---
+
+### Approach 2: Two-Pass Hash Map
+
+First pass: build a hash map of all values and their indices. Second pass: for each element, check if its complement exists in the map.
+
+<ComplexityTable time="O(n)" space="O(n)" />
+
+```typescript
+function twoSum(nums: number[], target: number): number[] {
+  const map = new Map<number, number>();
+
+  // First pass: store all numbers and indices
+  for (let i = 0; i < nums.length; i++) {
+    map.set(nums[i], i);
+  }
+
+  // Second pass: find complement
+  for (let i = 0; i < nums.length; i++) {
+    const complement = target - nums[i];
+    if (map.has(complement) && map.get(complement) !== i) {
+      return [i, map.get(complement)!];
+    }
+  }
+
+  return [];
+}
+```
+
+**Key Improvements:**
+- Linear time complexity by using hash map lookups
+- Separates building the map from searching
+- Still requires checking that we don't use same index twice
+
+---
+
+### Approach 3: One-Pass Hash Map ⭐ (Optimal)
+
+Build the hash map while searching for the complement. For each element, first check if its complement already exists in the map. If not, add the current element to the map and continue.
+
+<ComplexityTable time="O(n)" space="O(n)" />
+
+```typescript
+function twoSum(nums: number[], target: number): number[] {
+  const map = new Map<number, number>();
+
+  for (let i = 0; i < nums.length; i++) {
+    const complement = target - nums[i];
+
+    // Check if complement exists before adding current number
+    if (map.has(complement)) {
+      return [map.get(complement)!, i];
+    }
+
+    // Add current number to map
+    map.set(nums[i], i);
+  }
+
+  return [];
+}
+```
+
+**Why This Works:**
+1. **Single Pass Efficiency**: We only iterate through the array once
+2. **Natural Ordering**: Since we check before adding, we automatically ensure we don't use the same element twice
+3. **Early Termination**: Returns immediately when solution is found
+
+---
+
+### Bonus: Two Pointers (Sorted Array)
+
+If the array is sorted (or you're allowed to sort it), you can use two pointers from opposite ends. This approach uses O(1) extra space but requires sorting.
+
+<ComplexityTable time="O(n log n)" space="O(1)" />
+
+```typescript
+function twoSum(nums: number[], target: number): number[] {
+  // Note: This modifies the original array or requires tracking original indices
+  const indexed = nums.map((val, idx) => ({ val, idx }));
+  indexed.sort((a, b) => a.val - b.val);
+
+  let left = 0;
+  let right = indexed.length - 1;
+
+  while (left < right) {
+    const sum = indexed[left].val + indexed[right].val;
+
+    if (sum === target) {
+      return [indexed[left].idx, indexed[right].idx];
+    } else if (sum < target) {
+      left++;
+    } else {
+      right--;
+    }
+  }
+
+  return [];
+}
+```
+
+## Tricks & Key Insights
+
+### Pattern Recognition
+- **When to use this pattern:** Any problem asking for pairs/combinations that sum to a target
+- **Key indicator:** Need to find two elements with a specific relationship (sum, difference, product)
+
+### Core Tricks
+
+1. **Complement Pattern**: Instead of searching for "two numbers that sum to target", search for "does `target - current` exist?"
+   - Transform the problem from finding pairs to finding single elements
+   - Works for sum, difference, or any two-element relationship
+
+2. **Hash Map Space-Time Tradeoff**: Trading O(n) space for O(1) lookups
+   - Without hash map: O(n) search time → O(n²) total
+   - With hash map: O(1) search time → O(n) total
+   - This tradeoff is almost always worth it for search-heavy problems
+
+3. **One-Pass vs Two-Pass**: Build and search simultaneously
+   - Two-pass: Build complete map, then search
+   - One-pass: Check complement before adding current element
+   - One-pass is faster and automatically handles "same index" edge case
+
+4. **Alternative: Two Pointers for Sorted Arrays**
+   - If array is sorted or sorting is allowed, two pointers uses O(1) space
+   - Move pointers based on whether sum is too small or too large
+   - Time complexity becomes O(n log n) due to sorting
+
+### Common Pitfalls
+
+- ⚠️ **Using same element twice**: Make sure `i !== j` when checking pairs
+- ⚠️ **Returning values instead of indices**: Problem asks for indices, not the numbers themselves
+- ⚠️ **Not handling duplicates**: Array can contain duplicate values (e.g., `[3, 3]`)
+- ⚠️ **Assuming sorted input**: Array is NOT sorted unless explicitly stated
+
+### Edge Cases to Consider
+
+- Array with exactly 2 elements (minimum size)
+- Array with duplicate values that are the answer (e.g., `[3, 3]`, target `6`)
+- Negative numbers and zero
+- Large numbers close to integer limits
+- Target that cannot be achieved (though problem guarantees one solution exists)
+
+## Related Problems
+
+- **3Sum** - Extension to finding three numbers that sum to target
+- **Two Sum II (Sorted Array)** - Same problem but input is sorted (use two pointers)
+- **Two Sum IV (BST)** - Finding pair in binary search tree
+- **4Sum** - Finding four numbers that sum to target
+- **Subarray Sum Equals K** - Similar complement pattern for subarrays
