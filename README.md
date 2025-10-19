@@ -169,7 +169,7 @@ An interactive learning platform for algorithms and data structures with beautif
 #### Backtracking
 
 - [ ] Subsets ⭐⭐⭐
-- [ ] Permutations ⭐⭐⭐
+- [x] Permutations ⭐⭐⭐
 - [ ] Combination Sum ⭐⭐⭐
 - [ ] Letter Combinations of a Phone Number ⭐⭐
 - [ ] Word Search ⭐⭐

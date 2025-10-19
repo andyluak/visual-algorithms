@@ -1,0 +1,685 @@
+---
+title: Permutations
+description: Generate all possible permutations of an array
+difficulty: Medium
+tags: [array, backtracking, recursion]
+patterns: [backtracking, recursion, dfs]
+timeComplexity: O(n! × n)
+spaceComplexity: O(n)
+---
+
+import { DifficultyBadge } from '@/components/mdx/DifficultyBadge';
+import { TagList } from '@/components/mdx/TagList';
+import { ComplexityTable } from '@/components/mdx/ComplexityTable';
+import { PermutationsVisualizer } from '@/components/visualizer/wrappers/PermutationsVisualizer';
+
+<div className="flex items-center gap-3 mb-6 flex-wrap">
+  <DifficultyBadge difficulty="Medium" />
+  <TagList tags={['array', 'backtracking', 'recursion']} />
+</div>
+
+## Problem
+
+Given an array `nums` of distinct integers, return all possible permutations. You can return the answer in any order.
+
+**Constraints:**
+- `1 <= nums.length <= 6`
+- `-10 <= nums[i] <= 10`
+- All integers in `nums` are unique
+
+**Examples:**
+
+```
+Input: nums = [1, 2, 3]
+Output: [[1,2,3], [1,3,2], [2,1,3], [2,3,1], [3,1,2], [3,2,1]]
+Explanation: All 6 possible permutations of 3 distinct numbers
+```
+
+```
+Input: nums = [0, 1]
+Output: [[0,1], [1,0]]
+Explanation: 2 permutations for 2 elements
+```
+
+```
+Input: nums = [1]
+Output: [[1]]
+Explanation: Only one permutation for a single element
+```
+
+## Visualization
+
+<PermutationsVisualizer defaultNums={[1, 2, 3]} />
+
+## Understanding Backtracking
+
+### What is a Permutation?
+
+A **permutation** is a specific ordering of elements. For `[1, 2, 3]`, there are 6 permutations:
+- `[1, 2, 3]`, `[1, 3, 2]`, `[2, 1, 3]`, `[2, 3, 1]`, `[3, 1, 2]`, `[3, 2, 1]`
+
+Each permutation uses all elements exactly once, but in different orders.
+
+### The Decision Tree
+
+Think of generating permutations as making a series of choices at each step:
+
+```
+For [1, 2, 3]:
+
+                        [ ]
+                   /     |     \
+                  1      2      3
+                 / \    / \    / \
+                2   3  1   3  1   2
+               /     \ |   | /     \
+              3       2 3   1 2     1
+          [1,2,3] [1,3,2] [2,1,3] [2,3,1] [3,1,2] [3,2,1]
+```
+
+At each level, we choose one element that hasn't been used yet. This forms a tree of decisions.
+
+### How Backtracking Explores This Tree
+
+**Backtracking** is like depth-first search (DFS) on this decision tree:
+
+1. **Go deep first**: Make choices until you reach a complete permutation (a leaf)
+2. **Save the solution**: When you reach a leaf, save that permutation
+3. **Backtrack**: Undo the last choice and try a different option
+4. **Explore all branches**: Systematically try every possible path
+
+### Step-by-Step Example: `[1, 2]`
+
+Let's trace through generating all permutations of `[1, 2]`:
+
+```
+Step 1: Start with empty array
+current = []
+remaining = [1, 2]
+
+Step 2: Choose 1
+current = [1]
+remaining = [2]
+
+Step 3: Choose 2 (only option left)
+current = [1, 2]
+remaining = []
+→ Save [1, 2] ✓
+
+Step 4: Backtrack (remove 2)
+current = [1]
+remaining = [2]
+
+Step 5: Backtrack again (remove 1)
+current = []
+remaining = [1, 2]
+
+Step 6: Choose 2 (try second option from start)
+current = [2]
+remaining = [1]
+
+Step 7: Choose 1 (only option left)
+current = [2, 1]
+remaining = []
+→ Save [2, 1] ✓
+
+Done! Result: [[1, 2], [2, 1]]
+```
+
+### The "Choose-Explore-Unchoose" Pattern
+
+Every backtracking solution follows this template:
+
+```typescript
+function backtrack(current, remaining) {
+  // BASE CASE: Found complete solution
+  if (remaining.length === 0) {
+    result.push([...current]);
+    return;
+  }
+
+  // RECURSIVE CASE: Try each remaining option
+  for (let i = 0; i < remaining.length; i++) {
+    // 1. CHOOSE: Make a decision
+    current.push(remaining[i]);
+    const newRemaining = remaining without element i;
+
+    // 2. EXPLORE: Recurse with updated state
+    backtrack(current, newRemaining);
+
+    // 3. UNCHOOSE: Undo the decision (backtrack)
+    current.pop();
+  }
+}
+```
+
+### Why Do We Need to "Unchoose"?
+
+When we recurse, we're exploring one branch of the decision tree. After exploring that branch completely, we need to **restore the state** to try other branches.
+
+Example without backtracking (wrong):
+```typescript
+current = []
+current.push(1)  // current = [1]
+current.push(2)  // current = [1, 2]
+// ❌ Now stuck with [1, 2], can't generate [2, 1]
+```
+
+Example with backtracking (correct):
+```typescript
+current = []
+current.push(1)      // current = [1]
+current.push(2)      // current = [1, 2] → save it
+current.pop()        // current = [1]    (backtrack)
+current.pop()        // current = []     (backtrack)
+current.push(2)      // current = [2]
+current.push(1)      // current = [2, 1] → save it
+```
+
+### Detailed Example: `[1, 2, 3]`
+
+Let's trace the first few permutations:
+
+```
+Call Stack                     Action                  Current     Remaining
+─────────────────────────────────────────────────────────────────────────────
+backtrack()                    Start                   []          [1,2,3]
+  ├─ Choose 1
+  backtrack()                  Explore with 1          [1]         [2,3]
+    ├─ Choose 2
+    backtrack()                Explore with 1,2        [1,2]       [3]
+      ├─ Choose 3
+      backtrack()              Explore with 1,2,3      [1,2,3]     []
+                               ✓ SAVE [1,2,3]
+      └─ Return
+    ├─ Unchoose 3              Backtrack              [1,2]       [3]
+    ├─ Choose 3 (no more)
+    └─ Return
+  ├─ Unchoose 2                Backtrack              [1]         [2,3]
+  ├─ Choose 3
+  backtrack()                  Explore with 1,3        [1,3]       [2]
+    ├─ Choose 2
+    backtrack()                Explore with 1,3,2      [1,3,2]     []
+                               ✓ SAVE [1,3,2]
+      └─ Return
+    ├─ Unchoose 2              Backtrack              [1,3]       [2]
+    └─ Return
+  ├─ Unchoose 3                Backtrack              [1]         [2,3]
+  └─ Return
+├─ Unchoose 1                  Backtrack              []          [1,2,3]
+├─ Choose 2
+  ... (continues for [2,1,3], [2,3,1], [3,1,2], [3,2,1])
+```
+
+## Solutions
+
+### Approach 1: Using Built-in (Naive)
+
+Use language built-in permutation generators or brute force by generating all combinations and filtering.
+
+<ComplexityTable time="O(n!)" space="O(n!)" />
+
+```typescript
+// Not actually implementing the algorithm - just showing the idea
+function permute(nums: number[]): number[][] {
+  // In some languages, you might use a library
+  // This doesn't teach the algorithmic pattern
+  // Not recommended for interviews
+  return [];
+}
+```
+
+**Cons:**
+- Doesn't demonstrate understanding of backtracking
+- Not suitable for coding interviews
+- Misses the core algorithmic insight
+
+---
+
+### Approach 2: Backtracking with Used Array
+
+Use a boolean array to track which elements have been used in the current permutation. Build permutations by trying each unused element at each position.
+
+<ComplexityTable time="O(n! × n)" space="O(n)" />
+
+```typescript
+function permute(nums: number[]): number[][] {
+  const result: number[][] = [];
+  const current: number[] = [];
+  const used: boolean[] = new Array(nums.length).fill(false);
+
+  function backtrack() {
+    // Base case: permutation is complete
+    if (current.length === nums.length) {
+      result.push([...current]);
+      return;
+    }
+
+    // Try each unused number
+    for (let i = 0; i < nums.length; i++) {
+      if (used[i]) continue;
+
+      // Choose
+      current.push(nums[i]);
+      used[i] = true;
+
+      // Explore
+      backtrack();
+
+      // Un-choose (backtrack)
+      current.pop();
+      used[i] = false;
+    }
+  }
+
+  backtrack();
+  return result;
+}
+```
+
+**Key Improvements:**
+- Classic backtracking pattern: choose → explore → un-choose
+- O(n) space for tracking used elements
+- Clear and easy to understand
+
+---
+
+### Approach 3: Backtracking with Swap ⭐ (Optimal)
+
+Instead of tracking used elements, swap elements to move through permutations. Swap current position with each remaining element, recurse, then swap back.
+
+<ComplexityTable time="O(n! × n)" space="O(n)" />
+
+```typescript
+function permute(nums: number[]): number[][] {
+  const result: number[][] = [];
+
+  function backtrack(start: number) {
+    // Base case: reached end of array
+    if (start === nums.length) {
+      result.push([...nums]);
+      return;
+    }
+
+    // Try swapping current position with each position from start to end
+    for (let i = start; i < nums.length; i++) {
+      // Swap to put nums[i] at position start
+      [nums[start], nums[i]] = [nums[i], nums[start]];
+
+      // Recurse with next position
+      backtrack(start + 1);
+
+      // Swap back (backtrack)
+      [nums[start], nums[i]] = [nums[i], nums[start]];
+    }
+  }
+
+  backtrack(0);
+  return result;
+}
+```
+
+**Why This Works:**
+
+1. **In-place Swapping**: No need for extra `used` array or `current` array
+2. **Partition-based Thinking**: Elements before `start` are fixed, elements from `start` onward are being permuted
+3. **Natural Backtracking**: Swap puts element in position, recurse, swap back restores state
+4. **Space Efficient**: Only recursion stack, no auxiliary data structures
+
+---
+
+### Approach 4: Iterative (Advanced)
+
+Build permutations iteratively by inserting each new element into all positions of existing permutations.
+
+<ComplexityTable time="O(n! × n)" space="O(n!)" />
+
+```typescript
+function permute(nums: number[]): number[][] {
+  let result: number[][] = [[]];
+
+  for (const num of nums) {
+    const newResult: number[][] = [];
+
+    for (const perm of result) {
+      // Insert num at every possible position
+      for (let i = 0; i <= perm.length; i++) {
+        const newPerm = [...perm.slice(0, i), num, ...perm.slice(i)];
+        newResult.push(newPerm);
+      }
+    }
+
+    result = newResult;
+  }
+
+  return result;
+}
+```
+
+**How it Works:**
+- Start with empty permutation: `[[]]`
+- For each number, insert it into every position of every existing permutation
+- Example: `[1]` → `[[1]]` → `[[2,1], [1,2]]` → `[[3,2,1], [2,3,1], [2,1,3], [3,1,2], [1,3,2], [1,2,3]]`
+
+## Tricks & Key Insights
+
+### Pattern Recognition
+
+- **When to use this pattern:** Need to generate all possible arrangements/combinations/subsets
+- **Key indicator:** Words like "all possible", "permutations", "combinations", "generate all"
+
+### Core Tricks
+
+1. **Backtracking Template: Choose → Explore → Un-choose**
+
+   This is the **fundamental pattern** for all backtracking problems:
+
+   ```typescript
+   function backtrack(state) {
+     // BASE CASE: Check if we found a solution
+     if (isComplete(state)) {
+       saveResult(state);
+       return;
+     }
+
+     // Try all possible choices from current state
+     for (choice of availableChoices) {
+       // 1. CHOOSE: Make a decision
+       makeChoice(state, choice);
+
+       // 2. EXPLORE: Recurse to next level
+       backtrack(state);
+
+       // 3. UNCHOOSE: Undo decision (backtrack)
+       undoChoice(state, choice);
+     }
+   }
+   ```
+
+   **Why this works:**
+   - The recursion explores depth-first
+   - Each choice leads to a new branch
+   - Undoing choices lets us explore other branches
+   - Eventually all paths are explored
+
+2. **Understanding the Swap Approach**
+
+   The swap approach is clever but confusing at first. Here's the key insight:
+
+   **Array Partitioning:** Think of the array as having two parts:
+   ```
+   [fixed elements | elements being permuted]
+    ← position     |  position →
+       0..start-1  |  start..end
+   ```
+
+   **How it works for `[1, 2, 3]`:**
+   ```
+   Start: [1, 2, 3]  start=0
+          ↑
+
+   First iteration: Try 1 at position 0
+   - Swap(0,0): [1, 2, 3]  (no change)
+   - Recurse with start=1 on [1 | 2, 3]
+
+   Second iteration: Try 2 at position 0
+   - Swap(0,1): [2, 1, 3]
+   - Recurse with start=1 on [2 | 1, 3]
+   - Swap(0,1): [1, 2, 3]  (restore)
+
+   Third iteration: Try 3 at position 0
+   - Swap(0,2): [3, 2, 1]
+   - Recurse with start=1 on [3 | 2, 1]
+   - Swap(0,2): [1, 2, 3]  (restore)
+   ```
+
+   **Visual Example:**
+   ```
+   permute([1,2,3], start=0)
+     swap(0,0): [1,2,3]
+       permute([1,2,3], start=1)
+         swap(1,1): [1,2,3]
+           permute([1,2,3], start=2)
+             swap(2,2): [1,2,3]
+               permute([1,2,3], start=3) → SAVE [1,2,3] ✓
+         swap(1,2): [1,3,2]
+           permute([1,3,2], start=2)
+             swap(2,2): [1,3,2]
+               permute([1,3,2], start=3) → SAVE [1,3,2] ✓
+     swap(0,1): [2,1,3]
+       permute([2,1,3], start=1)
+         ... (generates [2,1,3] and [2,3,1])
+     swap(0,2): [3,2,1]
+       permute([3,2,1], start=1)
+         ... (generates [3,2,1] and [3,1,2])
+   ```
+
+3. **Base Case = Complete Solution**
+   - When current path length equals target length, save it
+   - For permutations: `current.length === nums.length` or `start === nums.length`
+   - For combinations: when reaching target size or end of options
+
+4. **Time Complexity Breakdown**
+
+   **Why O(n! × n)?**
+
+   - **How many permutations?** n! (factorial)
+     - For n=3: 3! = 6 permutations
+     - For n=4: 4! = 24 permutations
+     - For n=5: 5! = 120 permutations
+
+   - **Cost to build each permutation?** O(n)
+     - We make n recursive calls (one per element)
+     - At leaf, copying array is O(n)
+
+   - **Total:** n! permutations × O(n) each = **O(n! × n)**
+
+   **Practical limits:**
+   - n=6: 720 permutations (fast)
+   - n=10: 3,628,800 permutations (slow)
+   - n=15: 1,307,674,368,000 permutations (impossible!)
+
+5. **Why Backtracking is Like DFS**
+
+   Backtracking **IS** depth-first search on an implicit decision tree:
+
+   ```
+   DFS on Tree:                  Backtracking:
+   ──────────────               ─────────────────
+   - Visit node                  - Make choice
+   - Visit children              - Recurse
+   - Return to parent            - Undo choice
+   ```
+
+   The "tree" doesn't exist in memory—it's built implicitly through recursive calls.
+
+6. **The Two Mental Models**
+
+   **Model 1: Decision Tree (Easier to visualize)**
+   - Each node = current state
+   - Each edge = a choice
+   - Leaves = complete solutions
+   - We DFS this tree
+
+   **Model 2: State Space Search (More general)**
+   - State = partial solution
+   - Transitions = adding one element
+   - Goal state = complete permutation
+   - Search strategy = depth-first with backtracking
+
+### Why Don't We Get Duplicates?
+
+This is a **crucial** question! Here's why our backtracking algorithm generates each permutation exactly once:
+
+#### The "Used" Approach Prevents Duplicates
+
+```typescript
+function backtrack() {
+  // Try each number
+  for (let i = 0; i < nums.length; i++) {
+    if (used[i]) continue;  // ← This is the key!
+
+    current.push(nums[i]);
+    used[i] = true;
+    backtrack();
+    current.pop();
+    used[i] = false;
+  }
+}
+```
+
+**Why no duplicates?**
+- The `used[i]` array tracks which elements are already in `current`
+- We **skip** any element that's already been chosen in this path
+- Each permutation uses each element exactly once
+
+**Example trace for `[1, 2]`:**
+```
+Level 0: current=[], used=[false, false]
+  ├─ Choose 1: current=[1], used=[true, false]
+  │   Level 1: Try all unused elements
+  │   ├─ Skip 1 (used[0]=true) ❌
+  │   └─ Choose 2: current=[1,2], used=[true, true] ✓ SAVE
+  │
+  └─ Choose 2: current=[2], used=[false, true]
+      Level 1: Try all unused elements
+      ├─ Choose 1: current=[2,1], used=[true, true] ✓ SAVE
+      └─ Skip 2 (used[1]=true) ❌
+
+Result: [1,2] and [2,1] (no duplicates!)
+```
+
+#### The "Swap" Approach Also Prevents Duplicates
+
+The swap approach is trickier to understand:
+
+```typescript
+function backtrack(start: number) {
+  if (start === nums.length) {
+    result.push([...nums]);
+    return;
+  }
+
+  for (let i = start; i < nums.length; i++) {
+    [nums[start], nums[i]] = [nums[i], nums[start]];
+    backtrack(start + 1);
+    [nums[start], nums[i]] = [nums[i], nums[start]];
+  }
+}
+```
+
+**Why no duplicates?**
+
+The key insight: **At each position, we try each remaining element exactly once.**
+
+Think of it like filling slots:
+```
+Position 0: Try [1, 2, 3] as the first element
+Position 1: Try remaining elements as second element
+Position 2: Try remaining elements as third element
+```
+
+**Visual for `[1, 2, 3]`:**
+```
+start=0: Which element goes in position 0?
+  ├─ Try 1: [1|2,3] → recurse on position 1
+  │   start=1: Which element goes in position 1?
+  │   ├─ Try 2: [1,2|3] → recurse on position 2
+  │   │   start=2: Which element goes in position 2?
+  │   │   └─ Try 3: [1,2,3] ✓ SAVE
+  │   └─ Try 3: [1,3|2] → recurse on position 2
+  │       start=2: Which element goes in position 2?
+  │       └─ Try 2: [1,3,2] ✓ SAVE
+  │
+  ├─ Try 2: [2|1,3] → recurse on position 1
+  │   ... (generates [2,1,3] and [2,3,1])
+  │
+  └─ Try 3: [3|2,1] → recurse on position 1
+      ... (generates [3,2,1] and [3,1,2])
+```
+
+Each path through the tree represents a **unique sequence of choices**, so each permutation is generated exactly once.
+
+#### The Mathematical Guarantee
+
+**Decision Tree Structure:**
+- Level 0: Choose 1 of n elements (n choices)
+- Level 1: Choose 1 of (n-1) remaining elements (n-1 choices)
+- Level 2: Choose 1 of (n-2) remaining elements (n-2 choices)
+- ...
+- Level n-1: Choose 1 of 1 remaining elements (1 choice)
+
+**Total paths:** n × (n-1) × (n-2) × ... × 1 = **n!** paths
+
+Since each path is unique (different sequence of choices) and we explore every path exactly once (DFS with backtracking), we get exactly n! permutations with no duplicates.
+
+#### What If We Have Duplicate Elements?
+
+**Problem:** If `nums = [1, 1, 2]`, the basic algorithm WILL generate duplicates:
+```
+[1,1,2]  ← from choosing first 1, then second 1
+[1,1,2]  ← from choosing second 1, then first 1 (DUPLICATE!)
+[1,2,1]
+[1,2,1]  (DUPLICATE!)
+[2,1,1]
+[2,1,1]  (DUPLICATE!)
+```
+
+**Solution:** Sort + Skip duplicate choices:
+```typescript
+function permuteUnique(nums: number[]): number[][] {
+  nums.sort();  // Sort to group duplicates
+  const result: number[][] = [];
+  const used: boolean[] = new Array(nums.length).fill(false);
+
+  function backtrack(current: number[]) {
+    if (current.length === nums.length) {
+      result.push([...current]);
+      return;
+    }
+
+    for (let i = 0; i < nums.length; i++) {
+      if (used[i]) continue;
+
+      // Skip if same element and previous occurrence not used
+      if (i > 0 && nums[i] === nums[i-1] && !used[i-1]) {
+        continue;  // ← This prevents duplicate permutations!
+      }
+
+      current.push(nums[i]);
+      used[i] = true;
+      backtrack(current);
+      current.pop();
+      used[i] = false;
+    }
+  }
+
+  backtrack([]);
+  return result;
+}
+```
+
+The condition `nums[i] === nums[i-1] && !used[i-1]` means: "If this element is the same as the previous one, and we haven't used the previous one yet, skip it." This ensures we always use duplicates in order, preventing duplicate permutations.
+
+### Common Pitfalls
+
+- ⚠️ **Forgetting to copy the array**: `result.push(current)` pushes reference, not value. Use `result.push([...current])`
+- ⚠️ **Not backtracking**: Must undo changes (`pop()`, `used[i] = false`, swap back)
+- ⚠️ **Modifying input array**: In swap approach, restore original order if needed
+- ⚠️ **Infinite recursion**: Always have a base case that stops recursion
+- ⚠️ **Duplicate elements in input**: Basic algorithm will generate duplicate permutations! Need to modify with sorting + skip logic
+
+### Edge Cases to Consider
+
+- Single element array: `[1]` → `[[1]]`
+- Two elements: `[1,2]` → `[[1,2], [2,1]]`
+- Empty array (if allowed): `[]` → `[[]]`
+- Maximum constraint (n=6): 720 permutations, still manageable
+
+## Related Problems
+
+- [Permutations II](https://leetcode.com/problems/permutations-ii/) - Permutations with duplicate elements
+- [Combinations](https://leetcode.com/problems/combinations/) - Choose k elements from n (order doesn't matter)
+- [Subsets](https://leetcode.com/problems/subsets/) - All possible subsets (power set)
+- [Letter Combinations of Phone Number](https://leetcode.com/problems/letter-combinations-of-a-phone-number/) - Similar backtracking pattern
+- [N-Queens](https://leetcode.com/problems/n-queens/) - Advanced backtracking with constraints
