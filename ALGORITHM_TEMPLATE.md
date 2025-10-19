@@ -4,6 +4,8 @@ This template provides a standardized structure for all algorithm pages. Copy th
 
 ---
 
+https://fumadocs.dev/docs/ui/theme - Theme Guide
+
 ## MDX File Structure
 
 ```mdx
@@ -40,16 +42,20 @@ import { {{VisualizerComponent}} } from '@/components/visualizer/wrappers/{{Visu
 **Examples:**
 
 ```
+
 Input: {{example_input_1}}
 Output: {{example_output_1}}
 Explanation: {{explanation_1}}
+
 ```
 
 ```
+
 Input: {{example_input_2}}
 Output: {{example_output_2}}
 Explanation: {{explanation_2}}
-```
+
+````
 
 ## Visualization
 
@@ -65,13 +71,15 @@ Explanation: {{explanation_2}}
 
 ```{{language}}
 {{BRUTE_FORCE_CODE}}
-```
+````
 
 **Pros:**
+
 - {{pro1}}
 - {{pro2}}
 
 **Cons:**
+
 - {{con1}}
 - {{con2}}
 
@@ -88,6 +96,7 @@ Explanation: {{explanation_2}}
 ```
 
 **Key Improvements:**
+
 - {{improvement1}}
 - {{improvement2}}
 
@@ -104,6 +113,7 @@ Explanation: {{explanation_2}}
 ```
 
 **Why This Works:**
+
 1. {{reason1}}
 2. {{reason2}}
 3. {{reason3}}
@@ -111,20 +121,24 @@ Explanation: {{explanation_2}}
 ## Tricks & Key Insights
 
 ### Pattern Recognition
+
 - **When to use this pattern:** {{PATTERN_USAGE_SCENARIO}}
 - **Key indicator:** {{PATTERN_INDICATOR}}
 
 ### Core Tricks
+
 1. **{{TRICK_1_NAME}}**: {{TRICK_1_DESCRIPTION}}
 2. **{{TRICK_2_NAME}}**: {{TRICK_2_DESCRIPTION}}
 3. **{{TRICK_3_NAME}}**: {{TRICK_3_DESCRIPTION}}
 
 ### Common Pitfalls
+
 - ⚠️ {{PITFALL_1}}
 - ⚠️ {{PITFALL_2}}
 - ⚠️ {{PITFALL_3}}
 
 ### Edge Cases to Consider
+
 - {{EDGE_CASE_1}}
 - {{EDGE_CASE_2}}
 - {{EDGE_CASE_3}}
@@ -134,6 +148,7 @@ Explanation: {{explanation_2}}
 - [{{Related Problem 1}}]({{link1}}) - {{similarity1}}
 - [{{Related Problem 2}}]({{link2}}) - {{similarity2}}
 - [{{Related Problem 3}}]({{link3}}} - {{similarity3}}
+
 ```
 
 ---
@@ -213,3 +228,4 @@ See `content/docs/arrays-hash-maps/two-sum.mdx` for a complete example of this t
 4. **Progressive Complexity**: Start with brute force, end with optimal
 5. **Practical Insights**: Focus on "why" and "when", not just "what"
 6. **Searchable**: Use consistent tags and pattern names across all pages
+```

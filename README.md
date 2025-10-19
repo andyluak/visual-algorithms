@@ -142,7 +142,7 @@ An interactive learning platform for algorithms and data structures with beautif
 #### Dynamic Programming (1D)
 
 - [x] Climbing Stairs ⭐⭐⭐
-- [ ] House Robber ⭐⭐⭐
+- [x] House Robber ⭐⭐⭐
 - [ ] Coin Change ⭐⭐⭐
 - [ ] Longest Increasing Subsequence ⭐⭐⭐
 - [ ] Word Break ⭐⭐

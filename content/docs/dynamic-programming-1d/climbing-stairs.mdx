@@ -1,0 +1,342 @@
+---
+title: Climbing Stairs
+description: Count the number of distinct ways to climb n stairs
+difficulty: Easy
+tags: [dynamic-programming, math, memoization]
+patterns: [dp-1d, fibonacci, bottom-up, top-down]
+timeComplexity: O(n)
+spaceComplexity: O(1)
+---
+
+import { DifficultyBadge } from '@/components/mdx/DifficultyBadge';
+import { TagList } from '@/components/mdx/TagList';
+import { ComplexityTable } from '@/components/mdx/ComplexityTable';
+import { ClimbingStairsVisualizer } from '@/components/visualizer/wrappers/ClimbingStairsVisualizer';
+
+<div className="flex items-center gap-3 mb-6 flex-wrap">
+  <DifficultyBadge difficulty="Easy" />
+  <TagList tags={['dynamic-programming', 'math', 'memoization']} />
+</div>
+
+## Problem
+
+You are climbing a staircase. It takes `n` steps to reach the top.
+
+Each time you can either climb **1 or 2 steps**. In how many distinct ways can you climb to the top?
+
+**Constraints:**
+- `1 <= n <= 45`
+
+**Examples:**
+
+```
+Input: n = 2
+Output: 2
+Explanation: There are two ways to climb to the top:
+1. 1 step + 1 step
+2. 2 steps
+```
+
+```
+Input: n = 3
+Output: 3
+Explanation: There are three ways to climb to the top:
+1. 1 step + 1 step + 1 step
+2. 1 step + 2 steps
+3. 2 steps + 1 step
+```
+
+```
+Input: n = 5
+Output: 8
+Explanation: 8 distinct ways (visualize below to see them build up!)
+```
+
+## Visualization
+
+<ClimbingStairsVisualizer n={5} />
+
+## Solutions
+
+### Approach 1: Recursive (Brute Force)
+
+Try all possible combinations by recursively choosing to take 1 or 2 steps at each position.
+
+<ComplexityTable time="O(2^n)" space="O(n)" />
+
+```typescript
+function climbStairs(n: number): number {
+  // Base cases
+  if (n === 0) return 1; // One way: don't move
+  if (n === 1) return 1; // One way: single step
+  if (n === 2) return 2; // Two ways: 1+1 or 2
+
+  // Recursive case: sum of ways from (n-1) and (n-2)
+  return climbStairs(n - 1) + climbStairs(n - 2);
+}
+```
+
+**Why This Is Slow:**
+- Recalculates same subproblems many times
+- For `n = 5`: calculates `climbStairs(3)` three times, `climbStairs(2)` five times
+- Time complexity: O(2^n) - exponential growth
+- Stack depth: O(n) for recursion
+
+**Use Case:**
+- Understanding the problem structure
+- Base for optimization with memoization
+
+---
+
+### Approach 2: Memoization (Top-Down DP)
+
+Cache results of recursive calls to avoid recomputation. Each subproblem is solved only once.
+
+<ComplexityTable time="O(n)" space="O(n)" />
+
+```typescript
+function climbStairs(n: number): number {
+  const memo = new Map<number, number>();
+  return helper(n, memo);
+}
+
+function helper(n: number, memo: Map<number, number>): number {
+  // Base cases
+  if (n === 0) return 1;
+  if (n === 1) return 1;
+  if (n === 2) return 2;
+
+  // Check if already computed
+  if (memo.has(n)) {
+    return memo.get(n)!;
+  }
+
+  // Compute and cache result
+  const result = helper(n - 1, memo) + helper(n - 2, memo);
+  memo.set(n, result);
+
+  return result;
+}
+```
+
+**Key Improvements:**
+- Each subproblem computed only once
+- Time: O(n) - compute n values
+- Space: O(n) - memo map + recursion stack
+- "Top-down" because we start from n and work down to base cases
+
+---
+
+### Approach 3: Tabulation (Bottom-Up DP)
+
+Build solution iteratively from base cases up to n. No recursion needed.
+
+<ComplexityTable time="O(n)" space="O(n)" />
+
+```typescript
+function climbStairs(n: number): number {
+  // Handle edge cases
+  if (n === 1) return 1;
+  if (n === 2) return 2;
+
+  // Create DP array
+  const dp: number[] = new Array(n + 1);
+
+  // Base cases
+  dp[0] = 1; // or dp[1] = 1, both work
+  dp[1] = 1;
+  dp[2] = 2;
+
+  // Fill table from bottom up
+  for (let i = 3; i <= n; i++) {
+    dp[i] = dp[i - 1] + dp[i - 2];
+  }
+
+  return dp[n];
+}
+```
+
+**Why This Works:**
+- Build solution from known values (bottom-up)
+- No recursion overhead
+- Easy to visualize and debug
+- "Bottom-up" because we start from base cases and build up to n
+
+---
+
+### Approach 4: Space-Optimized DP ⭐ (Optimal)
+
+We only need the last two values to compute the next one. Use two variables instead of an array.
+
+<ComplexityTable time="O(n)" space="O(1)" />
+
+```typescript
+function climbStairs(n: number): number {
+  // Handle edge cases
+  if (n === 1) return 1;
+  if (n === 2) return 2;
+
+  // Only track last two values
+  let prev2 = 1; // dp[i-2]
+  let prev1 = 2; // dp[i-1]
+
+  for (let i = 3; i <= n; i++) {
+    const current = prev1 + prev2;
+    prev2 = prev1; // Shift window
+    prev1 = current;
+  }
+
+  return prev1;
+}
+```
+
+**Why This Is Optimal:**
+1. **O(n) Time**: Single pass through 3 to n
+2. **O(1) Space**: Only two variables, no array or recursion
+3. **Same Logic**: Still computing dp[i] = dp[i-1] + dp[i-2]
+4. **Sliding Window**: Keep only what we need
+
+**This is the preferred solution for interviews!**
+
+---
+
+### Bonus: Fibonacci Formula (Mathematical)
+
+The climbing stairs problem follows the Fibonacci sequence. We can use Binet's formula.
+
+<ComplexityTable time="O(1)" space="O(1)" />
+
+```typescript
+function climbStairs(n: number): number {
+  const sqrt5 = Math.sqrt(5);
+  const phi = (1 + sqrt5) / 2; // Golden ratio
+  const psi = (1 - sqrt5) / 2;
+
+  // Binet's formula for nth Fibonacci number (shifted by 1)
+  return Math.round((Math.pow(phi, n + 1) - Math.pow(psi, n + 1)) / sqrt5);
+}
+```
+
+**Notes:**
+- Theoretically O(1) time and space
+- Uses floating-point arithmetic (potential precision issues)
+- Interesting mathematically, but not practical for interviews
+- Better to use DP approach for clarity and reliability
+
+---
+
+## Tricks & Key Insights
+
+### Pattern Recognition
+
+- **When to use this pattern:** Counting combinations/ways problems with overlapping subproblems
+- **Key indicator:** "How many ways..." + "choose between X options at each step"
+- **DP signals:** Optimal substructure (solution built from smaller solutions) + overlapping subproblems
+
+### Core Tricks
+
+1. **Recognize Fibonacci Pattern**: This is the Fibonacci sequence in disguise
+   ```
+   n = 1: 1 way
+   n = 2: 2 ways
+   n = 3: 3 ways (1+2)
+   n = 4: 5 ways (2+3)
+   n = 5: 8 ways (3+5)
+   ```
+   - Pattern: `f(n) = f(n-1) + f(n-2)` (exactly Fibonacci!)
+   - Why: Ways to reach step n = ways to reach (n-1) + take 1 step + ways to reach (n-2) + take 2 steps
+
+2. **Base Cases Matter**: Always identify and handle base cases first
+   ```typescript
+   dp[0] = 1  // or dp[1] = 1 (both interpretations work)
+   dp[1] = 1  // one way: take 1 step
+   dp[2] = 2  // two ways: 1+1 or 2
+   ```
+
+3. **Space Optimization Technique**: If `dp[i]` only depends on last k values, use k variables
+   ```typescript
+   // Instead of: dp[i] = dp[i-1] + dp[i-2] with array
+   // Use: current = prev1 + prev2 with variables
+   ```
+   - Common in 1D DP problems
+   - Reduces O(n) space to O(1)
+   - Same time complexity, better space
+
+4. **Top-Down vs Bottom-Up Trade-offs**:
+   - **Top-Down (Memoization)**:
+     - More intuitive (matches recursive thinking)
+     - Only computes needed subproblems
+     - Recursion overhead
+   - **Bottom-Up (Tabulation)**:
+     - Iterative (no stack overflow risk)
+     - Computes all subproblems
+     - Easier to optimize space
+
+5. **State Transition Formula**: Core of DP solution
+   ```typescript
+   dp[i] = dp[i-1] + dp[i-2]
+   ```
+   - Represents: "To reach step i, you either came from step i-1 (take 1 step) or step i-2 (take 2 steps)"
+   - Sum them because we want total ways (not min/max)
+
+### Common Pitfalls
+
+- ⚠️ **Off-by-one errors**: Confusing `dp[0]` vs `dp[1]` as base case
+- ⚠️ **Array size**: Create array of size `n+1` not `n` (to store dp[n])
+- ⚠️ **Base case coverage**: Not handling n=1, n=2 before loop
+- ⚠️ **Integer overflow**: For large n (> 45), result exceeds integer limits
+- ⚠️ **Wrong recurrence**: Using dp[i] = dp[i-1] * dp[i-2] instead of sum
+
+### Edge Cases to Consider
+
+- n = 1: Should return 1 (one way: single step)
+- n = 2: Should return 2 (two ways: 1+1 or 2)
+- n = 3: Should return 3 (verify pattern starts correctly)
+- Large n (around 45): Fibonacci numbers grow exponentially, check for overflow
+
+## Why This Problem Is Important
+
+### Foundational DP Concepts
+
+1. **Introduction to DP**: Perfect first DP problem
+   - Simple enough to understand
+   - Shows all key DP concepts
+   - Multiple solution approaches to learn from
+
+2. **Overlapping Subproblems**: Clear demonstration
+   - Recursive tree shows repeated calculations
+   - Memoization shows dramatic speedup
+   - O(2^n) → O(n) is huge improvement
+
+3. **Optimal Substructure**: Solution to n built from solutions to n-1 and n-2
+   - Foundation of DP approach
+   - Helps recognize similar problems
+
+4. **Space Optimization**: Classic example of reducing space
+   - From O(n) array to O(1) variables
+   - Technique applies to many 1D DP problems
+
+### Real-World Applications
+
+- **Combinations counting**: Many real problems follow this pattern
+- **Resource allocation**: Discrete choices at each step
+- **Path counting**: Grid problems, route counting
+- **Sequence problems**: Building valid sequences with constraints
+
+## Related Problems
+
+### Direct Variants
+- [Min Cost Climbing Stairs](https://leetcode.com/problems/min-cost-climbing-stairs/) - Add cost to each step
+- [Climbing Stairs with Variable Steps](https://leetcode.com/problems/climbing-stairs/) - Can take 1, 2, or k steps
+- [Decode Ways](https://leetcode.com/problems/decode-ways/) - Similar DP structure
+
+### Similar DP Patterns
+- [House Robber](https://leetcode.com/problems/house-robber/) - Can't use adjacent elements
+- [Fibonacci Number](https://leetcode.com/problems/fibonacci-number/) - Exact same recurrence
+- [Nth Tribonacci Number](https://leetcode.com/problems/n-th-tribonacci-number/) - Extended to 3 previous values
+- [Jump Game](https://leetcode.com/problems/jump-game/) - Reachability variant
+
+### Advanced Applications
+- [Unique Paths](https://leetcode.com/problems/unique-paths/) - 2D grid version
+- [Coin Change](https://leetcode.com/problems/coin-change/) - Unbounded knapsack variant
+- [Perfect Squares](https://leetcode.com/problems/perfect-squares/) - Similar counting problem
