@@ -1,4 +1,4 @@
 {
   "title": "JavaScript Utility Functions",
-  "pages": ["debounce"]
+  "pages": ["debounce", "throttle"]
 }

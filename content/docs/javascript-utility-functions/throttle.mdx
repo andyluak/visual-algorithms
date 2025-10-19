@@ -1,0 +1,420 @@
+---
+title: Throttle
+description: Limit function execution to once per time interval
+difficulty: Medium
+tags: [javascript, utilities, performance, events]
+patterns: [throttle, closure, timing]
+timeComplexity: O(1)
+spaceComplexity: O(1)
+---
+
+import { DifficultyBadge } from '@/components/mdx/DifficultyBadge';
+import { TagList } from '@/components/mdx/TagList';
+import { ComplexityTable } from '@/components/mdx/ComplexityTable';
+import { ThrottleVisualizer } from '@/components/visualizer/wrappers/ThrottleVisualizer';
+
+<div className="flex items-center gap-3 mb-6 flex-wrap">
+  <DifficultyBadge difficulty="Medium" />
+  <TagList tags={['javascript', 'utilities', 'performance', 'events']} />
+</div>
+
+## Problem
+
+Create a throttle function that ensures a callback is executed at most once per specified time interval, regardless of how many times it's invoked. Unlike debounce which waits for inactivity, throttle guarantees regular execution intervals.
+
+**Use Cases:**
+- Scroll events: Update scroll position indicator at regular intervals
+- Mouse movement: Track cursor position without overwhelming the system
+- Window resize: Update layout at controlled intervals during resize
+- API rate limiting: Ensure requests don't exceed rate limits
+- Game loop updates: Maintain consistent frame rates
+
+**Constraints:**
+- Must preserve function context (`this`)
+- Should handle function arguments correctly
+- Must execute immediately on first call (leading edge)
+- Should maintain consistent time intervals
+- Should be memory-efficient
+
+**Examples:**
+
+```javascript
+// Scroll position tracker
+const updateScrollPosition = (e) => {
+  console.log('Scroll position:', window.scrollY);
+};
+const throttledScroll = throttle(updateScrollPosition, 100);
+
+// User scrolls continuously for 1 second
+window.addEventListener('scroll', throttledScroll);
+// Executes at: 0ms, 100ms, 200ms, 300ms, ..., 1000ms
+// Instead of potentially hundreds of times
+```
+
+## Visualization
+
+<ThrottleVisualizer interval={300} />
+
+## Solutions
+
+### Approach 1: Basic Timestamp Throttle
+
+Track the last execution time and only execute if enough time has passed.
+
+<ComplexityTable time="O(1)" space="O(1)" />
+
+```typescript
+function throttle<T extends (...args: any[]) => any>(
+  func: T,
+  interval: number
+): (...args: Parameters<T>) => void {
+  let lastExecutionTime = 0;
+
+  return function(this: unknown, ...args: Parameters<T>) {
+    const now = Date.now();
+
+    if (now - lastExecutionTime >= interval) {
+      lastExecutionTime = now;
+      func.apply(this, args);
+    }
+  };
+}
+```
+
+**Pros:**
+- Simple and straightforward
+- Executes immediately on first call
+- No timers to manage
+
+**Cons:**
+- Doesn't execute on trailing edge (last call might be ignored)
+- Arguments from ignored calls are lost
+- No way to cancel or flush
+
+---
+
+### Approach 2: Throttle with Trailing Edge ⭐
+
+Ensure both leading and trailing edge execution using a combination of immediate execution and setTimeout.
+
+<ComplexityTable time="O(1)" space="O(1)" />
+
+```typescript
+function throttle<T extends (...args: any[]) => any>(
+  func: T,
+  interval: number
+): (...args: Parameters<T>) => void {
+  let lastExecutionTime = 0;
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  let lastArgs: Parameters<T> | null = null;
+  let lastThis: unknown = null;
+
+  return function(this: unknown, ...args: Parameters<T>) {
+    const now = Date.now();
+    const timeSinceLastExecution = now - lastExecutionTime;
+
+    lastArgs = args;
+    lastThis = this;
+
+    // Execute immediately if interval has passed (leading edge)
+    if (timeSinceLastExecution >= interval) {
+      lastExecutionTime = now;
+      func.apply(this, args);
+
+      // Clear any pending trailing execution
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+    }
+    // Schedule trailing edge execution if not already scheduled
+    else if (!timeoutId) {
+      timeoutId = setTimeout(() => {
+        lastExecutionTime = Date.now();
+        func.apply(lastThis, lastArgs!);
+        timeoutId = null;
+      }, interval - timeSinceLastExecution);
+    }
+  };
+}
+```
+
+**Key Improvements:**
+- Executes on both leading and trailing edge
+- Captures latest arguments for trailing execution
+- More predictable behavior for rapid calls
+
+---
+
+### Approach 3: Advanced Throttle with Options ⭐⭐ (Production-Ready)
+
+Full-featured throttle with leading/trailing edge control, cancellation, and flush capabilities.
+
+<ComplexityTable time="O(1)" space="O(1)" />
+
+```typescript
+interface ThrottleOptions {
+  leading?: boolean;  // Execute on leading edge (default: true)
+  trailing?: boolean; // Execute on trailing edge (default: true)
+}
+
+interface ThrottledFunction<T extends (...args: any[]) => any> {
+  (...args: Parameters<T>): void;
+  cancel(): void;
+  flush(): void;
+  pending(): boolean;
+}
+
+function throttle<T extends (...args: any[]) => any>(
+  func: T,
+  interval: number,
+  options: ThrottleOptions = {}
+): ThrottledFunction<T> {
+  const { leading = true, trailing = true } = options;
+
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  let lastExecutionTime = 0;
+  let lastArgs: Parameters<T> | null = null;
+  let lastThis: unknown = null;
+
+  function invokeFunc(time: number) {
+    const args = lastArgs!;
+    const thisArg = lastThis;
+
+    lastArgs = lastThis = null;
+    lastExecutionTime = time;
+    return func.apply(thisArg, args);
+  }
+
+  function startTimer() {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+
+    timeoutId = setTimeout(() => {
+      timeoutId = null;
+      if (trailing && lastArgs) {
+        invokeFunc(Date.now());
+      }
+    }, interval - (Date.now() - lastExecutionTime));
+  }
+
+  function cancel() {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+    lastExecutionTime = 0;
+    lastArgs = lastThis = null;
+  }
+
+  function flush() {
+    if (timeoutId && lastArgs) {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      return invokeFunc(Date.now());
+    }
+    return undefined;
+  }
+
+  function pending() {
+    return timeoutId !== null;
+  }
+
+  function throttled(this: unknown, ...args: Parameters<T>) {
+    const now = Date.now();
+    const timeSinceLastExecution = now - lastExecutionTime;
+
+    // First call
+    if (lastExecutionTime === 0 && !leading) {
+      lastExecutionTime = now;
+    }
+
+    lastArgs = args;
+    lastThis = this;
+
+    const shouldInvoke = timeSinceLastExecution >= interval;
+
+    if (shouldInvoke) {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+
+      if (leading) {
+        invokeFunc(now);
+      } else {
+        lastExecutionTime = now;
+      }
+
+      if (trailing) {
+        startTimer();
+      }
+    } else if (!timeoutId && trailing) {
+      startTimer();
+    }
+
+    return undefined;
+  }
+
+  throttled.cancel = cancel;
+  throttled.flush = flush;
+  throttled.pending = pending;
+
+  return throttled;
+}
+```
+
+**Why This Works:**
+1. **Leading Edge**: Execute immediately when interval has passed
+2. **Trailing Edge**: Schedule execution for end of interval
+3. **Cancel**: Clear pending executions and reset state
+4. **Flush**: Force immediate execution of pending call
+5. **Pending**: Check if there's a scheduled execution
+
+**Usage Examples:**
+
+```typescript
+// Leading edge only: Execute immediately, ignore until interval passes
+const scrollLeading = throttle(handleScroll, 300, { trailing: false });
+
+// Trailing edge only: Wait for interval, then execute with latest args
+const scrollTrailing = throttle(handleScroll, 300, { leading: false });
+
+// Both edges (default): Execute immediately AND at end
+const scrollBoth = throttle(handleScroll, 300);
+
+// Cancel pending execution
+const apiCall = throttle(fetchData, 1000);
+apiCall('query');
+apiCall.cancel(); // Cancels pending execution
+
+// Force immediate execution
+apiCall('query');
+apiCall.flush(); // Executes immediately instead of waiting
+```
+
+## Tricks & Key Insights
+
+### Pattern Recognition
+- **When to use throttle:** Continuous events that fire rapidly (scroll, mousemove, resize)
+- **Key indicator:** Need consistent execution rate, not just final value
+- **vs Debounce:** Throttle executes regularly during activity; debounce waits for inactivity
+
+### Core Tricks
+
+1. **Timestamp Tracking**: Record last execution time
+   ```typescript
+   const timeSinceLastExecution = Date.now() - lastExecutionTime;
+   if (timeSinceLastExecution >= interval) {
+     // Execute
+   }
+   ```
+   - Simple and efficient
+   - No timer needed for basic throttle
+   - Clear execution logic
+
+2. **Leading vs Trailing Edge**:
+   - **Leading**: Execute immediately when interval allows
+   - **Trailing**: Execute at end of interval with latest args
+   - **Both**: Execute at start AND schedule end execution
+   - Choose based on UX requirements
+
+3. **Argument Preservation**: Store latest arguments
+   ```typescript
+   lastArgs = args;
+   lastThis = this;
+   ```
+   - Trailing execution uses most recent arguments
+   - Ensures final state is captured
+   - Important for UI consistency
+
+4. **Timer Management**: Schedule trailing execution
+   ```typescript
+   const remaining = interval - timeSinceLastExecution;
+   setTimeout(() => {
+     func.apply(lastThis, lastArgs);
+   }, remaining);
+   ```
+   - Calculate exact remaining time
+   - Don't create new interval
+   - One timer per throttled function
+
+### Common Pitfalls
+
+- ⚠️ **Using setInterval**: Don't use setInterval - it creates unnecessary timers and doesn't adapt to call frequency
+- ⚠️ **Losing context**: Remember to preserve `this` with `apply` or arrow functions
+- ⚠️ **Wrong interval choice**: Too short = no benefit, too long = feels unresponsive
+- ⚠️ **Throttling everything**: Not all functions need throttling (e.g., clicks)
+- ⚠️ **Memory leaks**: Clear timers on component unmount (React)
+
+### Edge Cases to Consider
+
+- First call behavior (should it execute immediately?)
+- Last call in a sequence (should it execute after interval?)
+- Rapid calls within interval (which arguments to use?)
+- Component unmount with pending execution
+- Changing interval value mid-execution
+
+### Real-World Guidelines
+
+**Interval Recommendations:**
+- Scroll position tracking: 100-200ms
+- Mouse movement: 50-100ms
+- Window resize: 150-250ms
+- API requests: 500-1000ms (or use debounce)
+- Animation/game loop: 16ms (60fps) or 33ms (30fps)
+
+**Throttle vs Debounce Decision Tree:**
+```
+Do you need intermediate values during activity?
+├─ Yes → Use Throttle (e.g., scroll position updates)
+└─ No → Do you only need the final value after activity stops?
+   ├─ Yes → Use Debounce (e.g., search input)
+   └─ No → Maybe you don't need either
+```
+
+**React Usage:**
+```typescript
+import { useCallback, useEffect, useRef } from 'react';
+
+function ScrollComponent() {
+  const throttledScroll = useRef(
+    throttle((e: Event) => {
+      console.log('Scroll position:', window.scrollY);
+    }, 100)
+  ).current;
+
+  useEffect(() => {
+    window.addEventListener('scroll', throttledScroll);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('scroll', throttledScroll);
+      throttledScroll.cancel();
+    };
+  }, [throttledScroll]);
+
+  return <div>{/* content */}</div>;
+}
+```
+
+## Throttle vs Debounce Comparison
+
+| Feature | Throttle | Debounce |
+|---------|----------|----------|
+| **Execution Pattern** | Regular intervals during activity | After inactivity period |
+| **First Call** | Usually executes immediately | Waits for delay |
+| **Subsequent Calls** | Executes every N milliseconds | Resets timer each call |
+| **Use Case** | Scroll, mousemove, resize | Search input, form validation |
+| **Performance** | Reduces call frequency | Eliminates redundant calls |
+| **UX Feel** | Responsive during interaction | Waits for user to finish |
+
+## Related Problems
+
+- [Debounce](/docs/javascript-utility-functions/debounce) - Wait for inactivity before executing
+- [Rate Limiting](/docs/javascript-utility-functions/rate-limiting) - Limit total executions over time
+- [Request Animation Frame](/docs/browser-apis/request-animation-frame) - Browser-optimized animation throttling
+- [Event Delegation](/docs/event-system-dom/event-delegation) - Often combined with throttle for performance

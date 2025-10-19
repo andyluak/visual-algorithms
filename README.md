@@ -215,8 +215,8 @@ An interactive learning platform for algorithms and data structures with beautif
 
 #### Utility Functions
 
-- [ ] Debounce ⭐⭐⭐
-- [ ] Throttle ⭐⭐⭐
+- [x] Debounce ⭐⭐⭐
+- [x] Throttle ⭐⭐⭐
 - [ ] Deep Clone ⭐⭐⭐
 - [ ] Bind Implementation ⭐⭐
 - [ ] Curry Function ⭐⭐
