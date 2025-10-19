@@ -1,0 +1,295 @@
+---
+title: Binary Search
+description: Search for a target value in a sorted array using binary search
+difficulty: Easy
+tags: [array, binary-search, divide-and-conquer]
+patterns: [binary-search, sorted-array]
+timeComplexity: O(log n)
+spaceComplexity: O(1)
+---
+
+import { DifficultyBadge } from '@/components/mdx/DifficultyBadge';
+import { TagList } from '@/components/mdx/TagList';
+import { ComplexityTable } from '@/components/mdx/ComplexityTable';
+import { BinarySearchVisualizer } from '@/components/visualizer/wrappers/BinarySearchVisualizer';
+
+<div className="flex items-center gap-3 mb-6 flex-wrap">
+  <DifficultyBadge difficulty="Easy" />
+  <TagList tags={['array', 'binary-search', 'divide-and-conquer']} />
+</div>
+
+## Problem
+
+Given an array of integers `nums` which is sorted in ascending order, and an integer `target`, write a function to search `target` in `nums`. If `target` exists, then return its index. Otherwise, return `-1`.
+
+You must write an algorithm with **O(log n)** runtime complexity.
+
+**Constraints:**
+- `1 <= nums.length <= 10^4`
+- `-10^4 < nums[i], target < 10^4`
+- All the integers in `nums` are **unique**
+- `nums` is sorted in ascending order
+
+**Examples:**
+
+```
+Input: nums = [-1, 0, 3, 5, 9, 12], target = 9
+Output: 4
+Explanation: 9 exists in nums and its index is 4
+```
+
+```
+Input: nums = [-1, 0, 3, 5, 9, 12], target = 2
+Output: -1
+Explanation: 2 does not exist in nums so return -1
+```
+
+## Visualization
+
+<BinarySearchVisualizer data={[-1, 0, 3, 5, 9, 12]} target={9} />
+
+## Solutions
+
+### Approach 1: Iterative Binary Search ⭐ (Optimal)
+
+Use two pointers (left and right) to track the search range. Calculate the middle index, compare with target, and eliminate half of the remaining elements in each iteration.
+
+<ComplexityTable time="O(log n)" space="O(1)" />
+
+```typescript
+function search(nums: number[], target: number): number {
+  let left = 0;
+  let right = nums.length - 1;
+
+  while (left <= right) {
+    // Calculate mid (avoid integer overflow)
+    const mid = Math.floor(left + (right - left) / 2);
+
+    if (nums[mid] === target) {
+      return mid; // Found target
+    } else if (nums[mid] < target) {
+      left = mid + 1; // Search right half
+    } else {
+      right = mid - 1; // Search left half
+    }
+  }
+
+  return -1; // Target not found
+}
+```
+
+**Why This Works:**
+1. **Halving Search Space**: Each iteration eliminates half the remaining elements
+2. **O(log n) Time**: If n = 1,000,000, only ~20 iterations needed
+3. **O(1) Space**: Only uses a few variables (left, right, mid)
+4. **Overflow Protection**: `left + (right - left) / 2` prevents overflow vs `(left + right) / 2`
+
+**Pros:**
+- Optimal time and space complexity
+- Iterative (no call stack overhead)
+- Simple and easy to understand
+
+**Cons:**
+- Requires array to be sorted
+- Only works with arrays, not linked lists
+
+---
+
+### Approach 2: Recursive Binary Search
+
+Implement binary search using recursion with divide-and-conquer approach. Each recursive call searches either the left or right half.
+
+<ComplexityTable time="O(log n)" space="O(log n)" />
+
+```typescript
+function search(nums: number[], target: number): number {
+  return binarySearchRecursive(nums, target, 0, nums.length - 1);
+}
+
+function binarySearchRecursive(
+  nums: number[],
+  target: number,
+  left: number,
+  right: number
+): number {
+  // Base case: target not found
+  if (left > right) {
+    return -1;
+  }
+
+  // Calculate mid
+  const mid = Math.floor(left + (right - left) / 2);
+
+  if (nums[mid] === target) {
+    return mid; // Found target
+  } else if (nums[mid] < target) {
+    // Search right half
+    return binarySearchRecursive(nums, target, mid + 1, right);
+  } else {
+    // Search left half
+    return binarySearchRecursive(nums, target, left, mid - 1);
+  }
+}
+```
+
+**Key Points:**
+- Each recursive call creates a stack frame (O(log n) space)
+- More elegant/functional programming style
+- Same time complexity as iterative
+- Risk of stack overflow for very large arrays (rare in practice)
+
+---
+
+### Approach 3: Understanding with Linear Search (Not Optimal)
+
+For comparison, here's linear search which doesn't leverage the sorted property.
+
+<ComplexityTable time="O(n)" space="O(1)" />
+
+```typescript
+function search(nums: number[], target: number): number {
+  for (let i = 0; i < nums.length; i++) {
+    if (nums[i] === target) {
+      return i;
+    }
+  }
+  return -1;
+}
+```
+
+**Why Not Use This?**
+- O(n) time - checks every element in worst case
+- Doesn't leverage sorted array property
+- For n = 1,000,000: binary search needs ~20 comparisons, linear needs up to 1,000,000
+- Useful to understand why binary search is so powerful
+
+---
+
+## Tricks & Key Insights
+
+### Pattern Recognition
+- **When to use binary search:** Sorted array + search/find operation
+- **Key requirement:** Array MUST be sorted (ascending or descending)
+- **Variants:** Find first/last occurrence, search in rotated array, find peak element
+
+### Core Tricks
+
+1. **Calculate Mid Without Overflow**: Use `left + (right - left) / 2`
+   - Naive: `(left + right) / 2` can overflow for large integers
+   - Safe: `left + (right - left) / 2` avoids overflow
+   - In JavaScript/TypeScript, less critical but good practice
+   - In languages like Java/C++, this prevents integer overflow bugs
+
+2. **Three-Way Comparison Pattern**: Check equal, less than, greater than
+   ```typescript
+   if (nums[mid] === target) return mid;      // Found
+   else if (nums[mid] < target) left = mid + 1;  // Go right
+   else right = mid - 1;                         // Go left
+   ```
+
+3. **Loop Condition**: Use `left <= right` not `left < right`
+   - `<=` handles single-element case correctly
+   - When `left === right`, one element remains to check
+   - Prevents off-by-one errors
+
+4. **Search Space Reduction**: Always eliminate the mid element
+   - If going right: `left = mid + 1` (not `mid`)
+   - If going left: `right = mid - 1` (not `mid`)
+   - Including mid would cause infinite loop
+
+5. **Iterative vs Recursive Trade-off**:
+   - Iterative: O(1) space, slightly faster, preferred for production
+   - Recursive: O(log n) space, more elegant, easier to understand
+   - Both have same O(log n) time complexity
+
+### Common Pitfalls
+
+- ⚠️ **Assuming array is sorted**: Binary search ONLY works on sorted arrays
+- ⚠️ **Wrong mid calculation**: Using `(left + right) / 2` can overflow in some languages
+- ⚠️ **Loop condition error**: Using `left < right` instead of `left <= right`
+- ⚠️ **Not excluding mid**: Using `left = mid` or `right = mid` causes infinite loops
+- ⚠️ **Integer division**: Remember to use `Math.floor()` for mid calculation in JavaScript
+
+### Edge Cases to Consider
+
+- Empty array: `[]` → Should return `-1`
+- Single element (found): `[5]`, target `5` → Return `0`
+- Single element (not found): `[5]`, target `3` → Return `-1`
+- Target at start: `[1, 2, 3]`, target `1` → Return `0`
+- Target at end: `[1, 2, 3]`, target `3` → Return `2`
+- Target not in range: `[1, 2, 3]`, target `10` → Return `-1`
+
+## Binary Search Variants
+
+### Common Extensions
+
+1. **Find First Occurrence** (in array with duplicates)
+   ```typescript
+   function findFirst(nums: number[], target: number): number {
+     let left = 0, right = nums.length - 1;
+     let result = -1;
+
+     while (left <= right) {
+       const mid = Math.floor(left + (right - left) / 2);
+       if (nums[mid] === target) {
+         result = mid;
+         right = mid - 1; // Continue searching left
+       } else if (nums[mid] < target) {
+         left = mid + 1;
+       } else {
+         right = mid - 1;
+       }
+     }
+     return result;
+   }
+   ```
+
+2. **Find Last Occurrence** (in array with duplicates)
+   ```typescript
+   function findLast(nums: number[], target: number): number {
+     let left = 0, right = nums.length - 1;
+     let result = -1;
+
+     while (left <= right) {
+       const mid = Math.floor(left + (right - left) / 2);
+       if (nums[mid] === target) {
+         result = mid;
+         left = mid + 1; // Continue searching right
+       } else if (nums[mid] < target) {
+         left = mid + 1;
+       } else {
+         right = mid - 1;
+       }
+     }
+     return result;
+   }
+   ```
+
+3. **Search Insert Position** (where to insert target)
+   ```typescript
+   function searchInsert(nums: number[], target: number): number {
+     let left = 0, right = nums.length - 1;
+
+     while (left <= right) {
+       const mid = Math.floor(left + (right - left) / 2);
+       if (nums[mid] === target) {
+         return mid;
+       } else if (nums[mid] < target) {
+         left = mid + 1;
+       } else {
+         right = mid - 1;
+       }
+     }
+
+     return left; // Insert position
+   }
+   ```
+
+## Related Problems
+
+- [Search Insert Position](https://leetcode.com/problems/search-insert-position/) - Find index to insert target
+- [First Bad Version](https://leetcode.com/problems/first-bad-version/) - Binary search on version numbers
+- [Search in Rotated Sorted Array](https://leetcode.com/problems/search-in-rotated-sorted-array/) - Modified binary search
+- [Find Peak Element](https://leetcode.com/problems/find-peak-element/) - Binary search without full sorting
+- [Find Minimum in Rotated Sorted Array](https://leetcode.com/problems/find-minimum-in-rotated-sorted-array/) - Another rotation variant
+- [Sqrt(x)](https://leetcode.com/problems/sqrtx/) - Binary search on answer space

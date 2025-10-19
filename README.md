@@ -42,7 +42,7 @@ An interactive learning platform for algorithms and data structures with beautif
 
 #### Binary Search
 
-- [ ] Binary Search ⭐⭐⭐
+- [x] Binary Search ⭐⭐⭐
 - [ ] Search in Rotated Sorted Array ⭐⭐⭐
 - [ ] Find Minimum in Rotated Sorted Array ⭐⭐
 - [ ] Search a 2D Matrix ⭐⭐
@@ -141,7 +141,7 @@ An interactive learning platform for algorithms and data structures with beautif
 
 #### Dynamic Programming (1D)
 
-- [ ] Climbing Stairs ⭐⭐⭐
+- [x] Climbing Stairs ⭐⭐⭐
 - [ ] House Robber ⭐⭐⭐
 - [ ] Coin Change ⭐⭐⭐
 - [ ] Longest Increasing Subsequence ⭐⭐⭐

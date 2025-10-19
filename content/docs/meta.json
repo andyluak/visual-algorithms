@@ -1,4 +1,4 @@
 {
   "title": "Visual Algorithms",
-  "pages": ["index", "arrays-hash-maps", "two-pointers", "javascript-utility-functions"]
+  "pages": ["index", "arrays-hash-maps", "two-pointers", "binary-search", "javascript-utility-functions"]
 }
