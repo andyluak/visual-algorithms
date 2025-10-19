@@ -1,0 +1,364 @@
+---
+title: LRU Cache
+description: Implement a Least Recently Used cache with O(1) operations
+difficulty: Medium
+tags: [hash-map, linked-list, design, data-structures]
+patterns: [hash-map, doubly-linked-list, cache]
+timeComplexity: O(1)
+spaceComplexity: O(capacity)
+---
+
+import { DifficultyBadge } from '@/components/mdx/DifficultyBadge';
+import { TagList } from '@/components/mdx/TagList';
+import { ComplexityTable } from '@/components/mdx/ComplexityTable';
+import { LRUCacheVisualizer } from '@/components/visualizer/wrappers/LRUCacheVisualizer';
+
+<div className="flex items-center gap-3 mb-6 flex-wrap">
+  <DifficultyBadge difficulty="Medium" />
+  <TagList tags={['hash-map', 'linked-list', 'design', 'data-structures']} />
+</div>
+
+## Problem
+
+Design a data structure that follows the constraints of a Least Recently Used (LRU) cache.
+
+Implement the `LRUCache` class:
+
+- `LRUCache(int capacity)` - Initialize the LRU cache with positive size capacity
+- `int get(int key)` - Return the value of the key if it exists, otherwise return -1
+- `void put(int key, int value)` - Update the value of the key if it exists. Otherwise, add the key-value pair to the cache. If the number of keys exceeds the capacity, evict the least recently used key.
+
+The functions `get` and `put` must each run in **O(1)** average time complexity.
+
+**Constraints:**
+- `1 <= capacity <= 3000`
+- `0 <= key <= 10^4`
+- `0 <= value <= 10^5`
+- At most `2 * 10^5` calls will be made to `get` and `put`
+
+**Examples:**
+
+```javascript
+const lru = new LRUCache(2);
+
+lru.put(1, 1); // cache: {1=1}
+lru.put(2, 2); // cache: {1=1, 2=2}
+lru.get(1);    // returns 1, cache: {2=2, 1=1}
+lru.put(3, 3); // evicts key 2, cache: {1=1, 3=3}
+lru.get(2);    // returns -1 (not found)
+lru.put(4, 4); // evicts key 1, cache: {3=3, 4=4}
+lru.get(1);    // returns -1 (not found)
+lru.get(3);    // returns 3
+lru.get(4);    // returns 4
+```
+
+## Visualization
+
+<LRUCacheVisualizer capacity={3} />
+
+## Solutions
+
+### Approach 1: Array-Based (Naive)
+
+Use an array to store key-value pairs. Search linearly for get/put operations and move accessed items to the end.
+
+<ComplexityTable time="O(n)" space="O(n)" />
+
+```typescript
+class LRUCache {
+  private capacity: number;
+  private cache: Array<{ key: number; value: number }> = [];
+
+  constructor(capacity: number) {
+    this.capacity = capacity;
+  }
+
+  get(key: number): number {
+    const index = this.cache.findIndex(item => item.key === key);
+    if (index === -1) return -1;
+
+    // Move to end (most recently used)
+    const [item] = this.cache.splice(index, 1);
+    this.cache.push(item);
+    return item.value;
+  }
+
+  put(key: number, value: number): void {
+    const index = this.cache.findIndex(item => item.key === key);
+
+    if (index !== -1) {
+      // Update existing
+      this.cache.splice(index, 1);
+    } else if (this.cache.length >= this.capacity) {
+      // Evict least recently used (first element)
+      this.cache.shift();
+    }
+
+    this.cache.push({ key, value });
+  }
+}
+```
+
+**Pros:**
+- Simple to understand and implement
+- No complex data structures needed
+- Works for small capacities
+
+**Cons:**
+- O(n) time for both get and put operations
+- Array splice/shift operations are expensive
+- Doesn't meet the O(1) requirement
+
+---
+
+### Approach 2: Hash Map + Array
+
+Use a hash map for O(1) lookups, but still use array for ordering (requires O(n) to reorder).
+
+<ComplexityTable time="O(n) for put, O(1) for get" space="O(n)" />
+
+```typescript
+class LRUCache {
+  private capacity: number;
+  private cache: Map<number, number> = new Map();
+  private order: number[] = [];
+
+  constructor(capacity: number) {
+    this.capacity = capacity;
+  }
+
+  get(key: number): number {
+    if (!this.cache.has(key)) return -1;
+
+    // Update order - O(n) operation
+    const index = this.order.indexOf(key);
+    this.order.splice(index, 1);
+    this.order.push(key);
+
+    return this.cache.get(key)!;
+  }
+
+  put(key: number, value: number): void {
+    if (this.cache.has(key)) {
+      // Remove from order
+      const index = this.order.indexOf(key);
+      this.order.splice(index, 1);
+    } else if (this.cache.size >= this.capacity) {
+      // Evict LRU
+      const lruKey = this.order.shift()!;
+      this.cache.delete(lruKey);
+    }
+
+    this.cache.set(key, value);
+    this.order.push(key);
+  }
+}
+```
+
+**Key Improvements:**
+- O(1) lookups with hash map
+- Still need to maintain separate order array
+- Better than approach 1 but still not optimal
+
+---
+
+### Approach 3: Hash Map + Doubly Linked List ⭐ (Optimal)
+
+Use a hash map for O(1) key lookups and a doubly linked list for O(1) reordering. The hash map stores references to nodes in the linked list.
+
+<ComplexityTable time="O(1)" space="O(capacity)" />
+
+```typescript
+class DLLNode {
+  key: number;
+  value: number;
+  prev: DLLNode | null = null;
+  next: DLLNode | null = null;
+
+  constructor(key: number, value: number) {
+    this.key = key;
+    this.value = value;
+  }
+}
+
+class LRUCache {
+  private capacity: number;
+  private cache: Map<number, DLLNode> = new Map();
+  private head: DLLNode; // Dummy head (LRU end)
+  private tail: DLLNode; // Dummy tail (MRU end)
+
+  constructor(capacity: number) {
+    this.capacity = capacity;
+    // Create dummy head and tail
+    this.head = new DLLNode(0, 0);
+    this.tail = new DLLNode(0, 0);
+    this.head.next = this.tail;
+    this.tail.prev = this.head;
+  }
+
+  get(key: number): number {
+    if (!this.cache.has(key)) return -1;
+
+    const node = this.cache.get(key)!;
+    // Move to end (most recently used)
+    this.removeNode(node);
+    this.addToTail(node);
+
+    return node.value;
+  }
+
+  put(key: number, value: number): void {
+    if (this.cache.has(key)) {
+      // Update existing node
+      const node = this.cache.get(key)!;
+      node.value = value;
+      this.removeNode(node);
+      this.addToTail(node);
+    } else {
+      // Check capacity
+      if (this.cache.size >= this.capacity) {
+        // Evict LRU (node after head)
+        const lruNode = this.head.next!;
+        this.removeNode(lruNode);
+        this.cache.delete(lruNode.key);
+      }
+
+      // Add new node
+      const newNode = new DLLNode(key, value);
+      this.cache.set(key, newNode);
+      this.addToTail(newNode);
+    }
+  }
+
+  private removeNode(node: DLLNode): void {
+    const prevNode = node.prev!;
+    const nextNode = node.next!;
+    prevNode.next = nextNode;
+    nextNode.prev = prevNode;
+  }
+
+  private addToTail(node: DLLNode): void {
+    const prevNode = this.tail.prev!;
+    prevNode.next = node;
+    node.prev = prevNode;
+    node.next = this.tail;
+    this.tail.prev = node;
+  }
+}
+```
+
+**Why This Works:**
+
+1. **Hash Map for O(1) Access**: Direct lookup of nodes by key
+2. **Doubly Linked List for O(1) Reordering**: Can remove and add nodes anywhere in constant time
+3. **Dummy Nodes Simplify Edge Cases**: No null checks for head/tail operations
+4. **Most Recent at Tail**: Easy to evict LRU from head, add MRU to tail
+
+---
+
+### Approach 4: JavaScript Map (Built-in Ordering) ⭐
+
+JavaScript's `Map` maintains insertion order, making it perfect for LRU cache implementation with minimal code.
+
+<ComplexityTable time="O(1)" space="O(capacity)" />
+
+```typescript
+class LRUCache {
+  private capacity: number;
+  private cache: Map<number, number> = new Map();
+
+  constructor(capacity: number) {
+    this.capacity = capacity;
+  }
+
+  get(key: number): number {
+    if (!this.cache.has(key)) return -1;
+
+    const value = this.cache.get(key)!;
+    // Delete and re-insert to move to end (most recent)
+    this.cache.delete(key);
+    this.cache.set(key, value);
+    return value;
+  }
+
+  put(key: number, value: number): void {
+    // Delete if exists (will re-insert at end)
+    this.cache.delete(key);
+
+    // Check capacity before adding
+    if (this.cache.size >= this.capacity) {
+      // First key is least recently used
+      const firstKey = this.cache.keys().next().value;
+      this.cache.delete(firstKey);
+    }
+
+    this.cache.set(key, value);
+  }
+}
+```
+
+**Why This Works:**
+
+1. **Map Maintains Insertion Order**: Keys are ordered by insertion time
+2. **Delete + Set = Move to End**: Removing and re-adding updates position
+3. **First Key = LRU**: `map.keys().next().value` gets the oldest entry
+4. **Minimal Code**: Leverages built-in JavaScript features
+
+**Trade-offs:**
+- ✅ Much simpler code than DLL approach
+- ✅ Same O(1) time complexity
+- ⚠️ JavaScript-specific (not portable to other languages)
+- ⚠️ Slightly more memory overhead than custom DLL in some engines
+
+## Tricks & Key Insights
+
+### Pattern Recognition
+
+- **When to use this pattern:** Need fast lookups + maintain order of access/insertion
+- **Key indicator:** "O(1) operations" + "track order/recency"
+
+### Core Tricks
+
+1. **HashMap + Doubly Linked List Combo**
+   - HashMap alone: Fast lookup but no ordering
+   - LinkedList alone: Ordered but slow lookup (O(n))
+   - Together: O(1) for both lookup and reordering
+   - The hash map stores references to nodes in the linked list
+
+2. **Dummy Head/Tail Nodes**
+   - Eliminates null checks when adding/removing nodes
+   - Head.next = LRU item, Tail.prev = MRU item
+   - Simplifies edge cases (empty cache, single item)
+
+3. **Move-to-End Pattern**
+   - Access = move to tail (mark as most recently used)
+   - Evict = remove from head (least recently used)
+   - Tail = hot end, Head = cold end
+
+4. **JavaScript Map Ordering**
+   - ES6 Maps maintain insertion order
+   - Delete + Set = move to end
+   - `map.keys().next().value` = first (oldest) key
+   - Simpler than manual DLL but language-specific
+
+### Common Pitfalls
+
+- ⚠️ **Forgetting to update both structures**: When using HashMap + DLL, must update both on every operation
+- ⚠️ **Not moving on get()**: Reading a value also makes it "recently used"
+- ⚠️ **Wrong eviction order**: Must evict least recently used, not oldest insertion
+- ⚠️ **Off-by-one capacity errors**: Check size before adding, not after
+
+### Edge Cases to Consider
+
+- Cache with capacity 1 (only one item at a time)
+- Getting non-existent keys (return -1)
+- Updating existing keys (should move to MRU, not evict)
+- Multiple gets of same key (should stay at MRU)
+- Put same key multiple times in a row
+
+## Related Problems
+
+- [LFU Cache](https://leetcode.com/problems/lfu-cache/) - Evict least frequently used instead of least recently used
+- [Design HashMap](https://leetcode.com/problems/design-hashmap/) - Implement hash map from scratch
+- [Design Linked List](https://leetcode.com/problems/design-linked-list/) - Implement doubly linked list
+- [Time Based Key-Value Store](https://leetcode.com/problems/time-based-key-value-store/) - Similar caching with timestamps
